@@ -7,9 +7,12 @@
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
+#include <tchar.h>
 using namespace std;
 #define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
-#define BUFFER_SIZE 50
+#define MY_STRING_TYPE (CERT_OID_NAME_STR)
+
+#define BUFFER_SIZE 100
 void MyHandleError(char* s);
 
 
@@ -36,6 +39,254 @@ void hex2bin(const char* src, char* target)
 	}
 }
 
+void testPrintNames() {
+	HCERTSTORE hCertStore;
+	PCCERT_CONTEXT pCertContext;
+
+	//---------------------------------------------------------------
+	// Begin Processing by opening a certificate store.
+
+	if (!(hCertStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM,
+		MY_ENCODING_TYPE,
+		NULL,
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		L"Root")))
+	{
+		MyHandleError((char*)("The MY system store did not open."));
+	}
+
+	//---------------------------------------------------------------
+	//       Loop through the certificates in the store. 
+	//       For each certificate,
+	//             get and print the name of the 
+	//                  certificate subject and issuer.
+	//             convert the subject name from the certificate
+	//                  to an ASN.1 encoded string and print the
+	//                  octets from that string.
+	//             convert the encoded string back into its form 
+	//                  in the certificate.
+
+	pCertContext = NULL;
+	while (pCertContext = CertEnumCertificatesInStore(
+		hCertStore,
+		pCertContext))
+	{
+		LPTSTR pszString;
+		LPTSTR pszName;
+		DWORD cbSize;
+		CERT_BLOB blobEncodedName;
+
+		//-----------------------------------------------------------
+		//        Get and display 
+		//        the name of subject of the certificate.
+
+		if (!(cbSize = CertGetNameString(
+			pCertContext,
+			CERT_NAME_SIMPLE_DISPLAY_TYPE,
+			0,
+			NULL,
+			NULL,
+			0)))
+		{
+			MyHandleError((char*)("CertGetName 1 failed."));
+		}
+
+		if (!(pszName = (LPTSTR)malloc(cbSize * sizeof(TCHAR))))
+		{
+			MyHandleError((char*)("Memory allocation failed."));
+		}
+
+		if (CertGetNameString(
+			pCertContext,
+			CERT_NAME_SIMPLE_DISPLAY_TYPE,
+			0,
+			NULL,
+			pszName,
+			cbSize))
+
+		{
+			_tprintf(TEXT("\nSubject -> %s.\n"), pszName);
+
+			//-------------------------------------------------------
+			//       Free the memory allocated for the string.
+			free(pszName);
+		}
+		else
+		{
+			MyHandleError((char*)("CertGetName failed."));
+		}
+
+		//-----------------------------------------------------------
+		//        Get and display 
+		//        the name of Issuer of the certificate.
+
+		if (!(cbSize = CertGetNameString(
+			pCertContext,
+			CERT_NAME_SIMPLE_DISPLAY_TYPE,
+			CERT_NAME_ISSUER_FLAG,
+			NULL,
+			NULL,
+			0)))
+		{
+			MyHandleError((char*)("CertGetName 1 failed."));
+		}
+
+		if (!(pszName = (LPTSTR)malloc(cbSize * sizeof(TCHAR))))
+		{
+			MyHandleError((char*)("Memory allocation failed."));
+		}
+
+		if (CertGetNameString(
+			pCertContext,
+			CERT_NAME_SIMPLE_DISPLAY_TYPE,
+			CERT_NAME_ISSUER_FLAG,
+			NULL,
+			pszName,
+			cbSize))
+		{
+			_tprintf((const wchar_t*)("Issuer  -> %s.\n"), pszName);
+
+			//-------------------------------------------------------
+			//       Free the memory allocated for the string.
+			free(pszName);
+		}
+		else
+		{
+			MyHandleError((char*)("CertGetName failed."));
+		}
+
+		//-----------------------------------------------------------
+		//       Convert the subject name to an ASN.1 encoded
+		//       string and print the octets in that string.
+
+		//       First : Get the number of bytes that must 
+		//       be allocated for the string.
+
+		cbSize = CertNameToStr(
+			pCertContext->dwCertEncodingType,
+			&(pCertContext->pCertInfo->Subject),
+			MY_STRING_TYPE,
+			NULL,
+			0);
+
+		//-----------------------------------------------------------
+		//  The function CertNameToStr returns the number
+		//  of bytes needed for a string to hold the
+		//  converted name, including the null terminator. 
+		//  If it returns one, the name is an empty string.
+
+		if (1 == cbSize)
+		{
+			MyHandleError((char*)("Subject name is an empty string."));
+		}
+
+		//-----------------------------------------------------------
+		//        Allocated the needed buffer. Note that this
+		//        memory must be freed inside the loop or the 
+		//        application will leak memory.
+
+		if (!(pszString = (LPTSTR)malloc(cbSize * sizeof(TCHAR))))
+		{
+			MyHandleError((char*)("Memory allocation failed."));
+		}
+
+		//-----------------------------------------------------------
+		//       Call the function again to get the string. 
+
+		cbSize = CertNameToStr(
+			pCertContext->dwCertEncodingType,
+			&(pCertContext->pCertInfo->Subject),
+			MY_STRING_TYPE,
+			pszString,
+			cbSize);
+
+		//-----------------------------------------------------------
+		//  The function CertNameToStr returns the number
+		//  of bytes in the string, including the null terminator.
+		//  If it returns 1, the name is an empty string.
+
+		if (1 == cbSize)
+		{
+			MyHandleError((char*)("Subject name is an empty string."));
+		}
+
+		//-----------------------------------------------------------
+		//    Get the length needed to convert the string back 
+		//    back into the name as it was in the certificate.
+
+		if (!(CertStrToName(
+			MY_ENCODING_TYPE,
+			pszString,
+			MY_STRING_TYPE,
+			NULL,
+			NULL,        // NULL to get the number of bytes 
+							// needed for the buffer.          
+			&cbSize,     // Pointer to a DWORD to hold the 
+							// number of bytes needed for the 
+							// buffer
+			NULL)))     // Optional address of a pointer to
+							// old the location for an error in the 
+							// input string.
+		{
+			MyHandleError(
+				(char*)("Could not get the length of the BLOB."));
+		}
+
+		if (!(blobEncodedName.pbData = (LPBYTE)malloc(cbSize)))
+		{
+			MyHandleError(
+				(char*)("Memory Allocation for the BLOB failed."));
+		}
+		blobEncodedName.cbData = cbSize;
+
+		if (CertStrToName(
+			MY_ENCODING_TYPE,
+			pszString,
+			MY_STRING_TYPE,
+			NULL,
+			blobEncodedName.pbData,
+			&blobEncodedName.cbData,
+			NULL))
+		{
+			_tprintf(TEXT("CertStrToName created the BLOB.\n"));
+		}
+		else
+		{
+			MyHandleError((char*)("Could not create the BLOB."));
+		}
+
+		//-----------------------------------------------------------
+		//       Free the memory.
+
+		free(blobEncodedName.pbData);
+		free(pszString);
+
+		//-----------------------------------------------------------
+		//       Pause before information on the next certificate
+		//       is displayed.
+
+		
+
+	} // End of while loop
+
+
+	//---------------------------------------------------------------
+	//   Close the MY store.
+
+	if (CertCloseStore(
+		hCertStore,
+		CERT_CLOSE_STORE_CHECK_FLAG))
+	{
+		
+	}
+	else
+	{
+		
+	}
+
+}
+
 void main(void)
 {
 	//--------------------------------------------------------------------
@@ -58,7 +309,7 @@ void main(void)
 
 	//-------------------------------------------------------------------
 	// Open a new certificate store in memory.
-
+	testPrintNames();
 	if (hMemoryStore = CertOpenStore(
 		CERT_STORE_PROV_MEMORY,    // Memory store
 		0,                         // Encoding type
@@ -85,7 +336,7 @@ void main(void)
 		CERT_SYSTEM_STORE_CURRENT_USER,
 		// Set the system store location in the
 		// registry
-		L"MY"))                 // Could have used other predefined 
+		L"Root"))                 // Could have used other predefined 
 								// system stores
 								// including Trust, CA, or Root
 	{
@@ -117,13 +368,45 @@ void main(void)
 
 
 
-
+	vector<BYTE> test = { 0x01,0x02 };
 	BYTE* byteData = (BYTE*)"CrazyFolks";
-	BYTE* certName = NULL;
-	DWORD readBytes = 0;
+	BYTE* certName = new BYTE[23 * sizeof(TCHAR)];
+	//certName = test.data();
+	LPWSTR outputName = NULL;
+	DWORD readBytes = 23 * sizeof(TCHAR);
 	LPCWSTR errorMessage = L"";
-	BOOL isGetName = CertStrToName(X509_ASN_ENCODING, TEXT("O=CrazyFolks"), CERT_X500_NAME_STR, NULL, certName, &readBytes, nullptr);
-	delete(certName);
+
+
+	//if (!(CertStrToName(
+	//	MY_ENCODING_TYPE,
+	//	pszString,
+	//	MY_STRING_TYPE,
+	//	NULL,
+	//	NULL,        // NULL to get the number of bytes 
+	//					// needed for the buffer.          
+	//	&cbSize,     // Pointer to a DWORD to hold the 
+	//					// number of bytes needed for the 
+	//					// buffer
+	//	NULL)))     // Optional address of a pointer to
+	//					// old the location for an error in the 
+	//					// input string.
+	//{
+	//	MyHandleError(
+	//		TEXT("Could not get the length of the BLOB."));
+	//}
+	CRYPT_INTEGER_BLOB nameBlob = {
+			nameBlob.cbData = 11,
+			nameBlob.pbData = byteData
+	};
+	int num = CertNameToStr(
+		MY_ENCODING_TYPE,
+		&nameBlob,
+		MY_STRING_TYPE,
+		outputName,
+		readBytes);
+
+	BOOL isGetName = CertStrToName(MY_ENCODING_TYPE, TEXT("O=CrazyFolks"), MY_STRING_TYPE, NULL, certName, &readBytes, nullptr);
+	delete []certName;
 	const char* hexSerialNumber = "00c42997d8e5ad1ba8";
 	char serialNumberBin[BUFFER_SIZE];
 	hex2bin(hexSerialNumber, serialNumberBin);
@@ -166,8 +449,25 @@ void main(void)
 	}
 	else
 	{
-		MyHandleError((char*)"Could not find the desired certificate.");
+		//MyHandleError((char*)"Could not find the desired certificate.");
 	}
+
+
+
+	CRYPT_HASH_BLOB blob;
+	const char* hexSubjectKeyIdentifier = "0a007b4107ce41a0b1b2772e84fddcc4913f6180";
+	char hexSubjectKeyIdentifiderBin[20];
+	hex2bin(hexSubjectKeyIdentifier, hexSubjectKeyIdentifiderBin);
+	char hexSubjectKeyIdentifiderBinReverse[20];
+	//std::reverse_copy(std::begin(hexSubjectKeyIdentifiderBin), std::end(hexSubjectKeyIdentifiderBin), std::begin(hexSubjectKeyIdentifiderBinReverse));
+	blob.cbData = strlen(hexSubjectKeyIdentifier) / 2;
+	blob.pbData = (BYTE*)hexSubjectKeyIdentifiderBin;
+	pDesiredCert = CertFindCertificateInStore(hSystemStore,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_KEY_IDENTIFIER,
+		&blob,
+		NULL);
 
 	//-------------------------------------------------------------------
 	// Get a certificate that has the string "Insert_cert_subject_name1" 
