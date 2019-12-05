@@ -1,4 +1,4 @@
-// PKCS7OpenSSL.cpp : This file contains the 'main' function. Program execution begins and ends there.
+﻿// PKCS7OpenSSL.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 #include <iostream>
@@ -18,6 +18,11 @@ static unsigned int asn1_simple_hdr_len(const unsigned char* p, unsigned int len
 	return (p[1] & 0x80) ? (2 + (p[1] & 0x7f)) : 2;
 }
 
+/**
+* Ref:  
+1.https://cpp.hotexamples.com/examples/-/-/PKCS7_sign/cpp-pkcs7_sign-function-examples.html
+2. https://blog.mtian.org/2015/06/windowspesign/ (keyword search: 一种更加快速安全的验证方法和一段验证代码)
+*/
 
 int main()
 {
