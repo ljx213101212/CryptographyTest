@@ -97,7 +97,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\Tools\openssl-master;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcrypto.lib;</AdditionalDependencies>
+      <AdditionalDependencies>libcrypto.lib;CRYPT32.LIB;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -114,7 +114,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcrypto.lib;</AdditionalDependencies>
+      <AdditionalDependencies>libcrypto.lib;CRYPT32.LIB;</AdditionalDependencies>
       <AdditionalLibraryDirectories>D:\Tools\openssl-master;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -157,7 +157,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CertificateStoreOperation.cpp" />
     <ClCompile Include="PKCS7OpenSSL.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CertificateStoreOperation.h" />
+    <ClInclude Include="pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

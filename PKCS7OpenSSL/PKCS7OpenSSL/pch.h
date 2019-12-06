@@ -1,0 +1,10 @@
+#pragma once
+#include <stdio.h>
+#include <windows.h>
+#include <Wincrypt.h>
+#include <vector>
+#include <stdexcept>
+#include <algorithm>
+#include <tchar.h>
+#include <string>
+#include <fstream>

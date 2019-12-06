@@ -8,6 +8,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/pkcs7.h>
 #include "atlbase.h"
+#include "CertificateStoreOperation.h"
 
 using namespace std;
 using namespace ATL;
@@ -39,14 +40,22 @@ int main()
 	const char* certFile = "D:\\downloadTest\\certTest7\\ca.crt"; //Root Trusted CA certificate
 	int res = X509_load_cert_file(lookup, certFile, X509_FILETYPE_PEM);
 
+	X509_LOOKUP * lookup2 = NULL;
+	X509_STORE* store2 = NULL;
+	store2 = X509_STORE_new();
+	lookup2 = X509_STORE_add_lookup(store2, X509_LOOKUP_file());
+	CertificateStoreOperation cso;
+	PCCERT_CONTEXT cert;
+	cso.GetTestCert(&cert);
+	cso.ExportCertToFile(&cert, CertificateStoreOperation::OutputFileFormat::PEM);
+	int res2 = X509_load_cert_file(lookup2, "1.pem", X509_FILETYPE_PEM);
    
 	const char* CAfile = NULL, * CApath = NULL, * prog = NULL;
 	PKCS7* pPkcs7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
 
-		int seqhdrlen = asn1_simple_hdr_len(pPkcs7->d.sign->contents->d.other->value.sequence->data, pPkcs7->d.sign->contents->d.other->value.sequence->length);
+	int seqhdrlen = asn1_simple_hdr_len(pPkcs7->d.sign->contents->d.other->value.sequence->data, pPkcs7->d.sign->contents->d.other->value.sequence->length);
 	BIO* pContentBio = BIO_new_mem_buf(pPkcs7->d.sign->contents->d.other->value.sequence->data + seqhdrlen, pPkcs7->d.sign->contents->d.other->value.sequence->length - seqhdrlen);
-    
-	int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store, pContentBio, NULL, PKCS7_NOCRL);
+	int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store2, pContentBio, NULL, PKCS7_NOCRL);
 	
 	std::cout << "Hello World!\n";
 }
