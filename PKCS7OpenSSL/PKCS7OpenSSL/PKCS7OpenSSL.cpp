@@ -56,7 +56,8 @@ int main()
 	int seqhdrlen = asn1_simple_hdr_len(pPkcs7->d.sign->contents->d.other->value.sequence->data, pPkcs7->d.sign->contents->d.other->value.sequence->length);
 	BIO* pContentBio = BIO_new_mem_buf(pPkcs7->d.sign->contents->d.other->value.sequence->data + seqhdrlen, pPkcs7->d.sign->contents->d.other->value.sequence->length - seqhdrlen);
 	int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store2, pContentBio, NULL, PKCS7_NOCRL);
-	
+	remove("1.pem");
+
 	std::cout << "Hello World!\n";
 }
 
