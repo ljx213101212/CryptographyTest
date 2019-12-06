@@ -8,3 +8,13 @@
 #include <tchar.h>
 #include <string>
 #include <fstream>
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
+#include <openssl/pkcs7.h>
+#include <openssl/pem.h>
+#include "atlbase.h"
+#include "CertificateStoreOperation.h"

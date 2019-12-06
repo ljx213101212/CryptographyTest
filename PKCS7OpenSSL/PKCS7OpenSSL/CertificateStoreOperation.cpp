@@ -80,8 +80,31 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 		std::ofstream der_cert_file(der_cert, std::ios::binary | std::ios::out);
 		der_cert_file.write(reinterpret_cast<char*>(pCert->pbCertEncoded), pCert->cbCertEncoded);
 	}
+}
 
-
-
+void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert)
+{
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		L"Root");               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
+	CRYPT_HASH_BLOB blob;
 	
+	//std::reverse_copy(std::begin(hexSubjectKeyIdentifiderBin), std::end(hexSubjectKeyIdentifiderBin), std::begin(hexSubjectKeyIdentifiderBinReverse));
+	blob.cbData = aki->length;
+	blob.pbData = (BYTE*)aki->data;
+	*cert = CertFindCertificateInStore(hSystemStore,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_KEY_IDENTIFIER,
+		&blob,
+		NULL);
 }

@@ -14,6 +14,7 @@ public:
 	};
 
 	void GetTestCert(PCCERT_CONTEXT* cert);
+	void GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert);
 	void ExportCertToFile(PCCERT_CONTEXT* cert, OutputFileFormat  fileFormat);
 };
 

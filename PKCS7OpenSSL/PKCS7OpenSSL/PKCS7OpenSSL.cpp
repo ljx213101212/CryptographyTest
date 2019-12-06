@@ -1,14 +1,7 @@
 ﻿// PKCS7OpenSSL.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/pkcs7.h>
-#include "atlbase.h"
-#include "CertificateStoreOperation.h"
+#include "pch.h"
 
 using namespace std;
 using namespace ATL;
@@ -33,6 +26,7 @@ int main()
 	std::vector<char> buffer(std::istreambuf_iterator<char>(input), {});
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
 
+	//Load crt file directly
 	X509_LOOKUP* lookup = NULL;
 	X509_STORE* store = NULL;
 	store = X509_STORE_new();
@@ -40,6 +34,8 @@ int main()
 	const char* certFile = "D:\\downloadTest\\certTest7\\ca.crt"; //Root Trusted CA certificate
 	int res = X509_load_cert_file(lookup, certFile, X509_FILETYPE_PEM);
 
+
+	//Load cert object from certificate store , put into a temp file then load the temp file.
 	X509_LOOKUP * lookup2 = NULL;
 	X509_STORE* store2 = NULL;
 	store2 = X509_STORE_new();
@@ -50,13 +46,46 @@ int main()
 	cso.ExportCertToFile(&cert, CertificateStoreOperation::OutputFileFormat::PEM);
 	int res2 = X509_load_cert_file(lookup2, "1.pem", X509_FILETYPE_PEM);
    
+	//Load cert object then construct X509 object -> Get AKI (Authority Key Identifier).
+	string filePath2 = "D:\\downloadTest\\certTest7\\crazyfolk.pem";
+	std::ifstream input2(filePath2, std::ios::binary);
+	// copies all data into buffer
+	std::vector<char> buffer2(std::istreambuf_iterator<char>(input2), {});
+	const unsigned char* pCertificate2 = reinterpret_cast<unsigned char*>(buffer2.data());
+	X509* x509Cert = NULL;
+	BIO* cbio, * kbio;
+	cbio = BIO_new_mem_buf(pCertificate2, buffer2.size());
+	x509Cert = PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
+	const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(x509Cert);
+	const GENERAL_NAMES* generalNames = X509_get0_authority_issuer(x509Cert);
+
+
+
+	//Verification Process
 	const char* CAfile = NULL, * CApath = NULL, * prog = NULL;
 	PKCS7* pPkcs7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
-
 	int seqhdrlen = asn1_simple_hdr_len(pPkcs7->d.sign->contents->d.other->value.sequence->data, pPkcs7->d.sign->contents->d.other->value.sequence->length);
 	BIO* pContentBio = BIO_new_mem_buf(pPkcs7->d.sign->contents->d.other->value.sequence->data + seqhdrlen, pPkcs7->d.sign->contents->d.other->value.sequence->length - seqhdrlen);
 	int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store2, pContentBio, NULL, PKCS7_NOCRL);
 	remove("1.pem");
+
+	//Construct X509 by PKCS7 pointer, then get aki.
+	int text = 0;
+	X509_STORE* store3 = NULL;
+	store3 = X509_STORE_new();
+	STACK_OF(X509)* certs = pPkcs7->d.sign->cert;
+	for (int i = 0; certs && i < sk_X509_num(certs); i++) {
+		X509* x = sk_X509_value(certs, i);
+		//const ASN1_OCTET_STRING* myaki = X509_get0_subject_key_id(x);
+		//const GENERAL_NAMES* myGeneralNames = X509_get0_authority_issuer(x);
+		////Get cert by AKI from PKCS7 pointer
+		//PCCERT_CONTEXT targetCert;
+		//cso.GetCertByAKI(myaki, &targetCert);
+		X509_STORE_add_cert(store3, x);
+		int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store3, pContentBio, NULL, PKCS7_NOCRL);
+	}
+
+
 
 	std::cout << "Hello World!\n";
 }
