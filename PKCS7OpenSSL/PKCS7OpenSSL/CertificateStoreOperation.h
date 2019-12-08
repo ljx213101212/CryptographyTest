@@ -15,6 +15,8 @@ public:
 
 	void GetTestCert(PCCERT_CONTEXT* cert);
 	void GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert);
+	//void GetCertBySKI(const ASN1_OCTET_STRING* ski, PCCERT_CONTEXT* cert);
+	void GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert);
 	void ExportCertToFile(PCCERT_CONTEXT* cert, OutputFileFormat  fileFormat);
 };
 

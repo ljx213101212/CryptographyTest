@@ -81,6 +81,12 @@ int main()
 		////Get cert by AKI from PKCS7 pointer
 		//PCCERT_CONTEXT targetCert;
 		//cso.GetCertByAKI(myaki, &targetCert);
+		/*X509_NAME* subjectName = X509_get_subject_name(x);
+		char cSubject[1024];
+		X509_NAME_oneline(X509_get_subject_name(x), cSubject, sizeof(cSubject));*/
+		PCCERT_CONTEXT targetCert;
+		cso.GetCertBySubject(x, &targetCert);
+
 		X509_STORE_add_cert(store3, x);
 		int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store3, pContentBio, NULL, PKCS7_NOCRL);
 	}

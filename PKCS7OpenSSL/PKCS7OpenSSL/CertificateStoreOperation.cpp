@@ -51,6 +51,10 @@ void CertificateStoreOperation::GetTestCert(PCCERT_CONTEXT* cert) {
 		CERT_FIND_KEY_IDENTIFIER,
 		&blob,
 		NULL);
+
+	CertCloseStore(
+		hSystemStore,
+		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
 
@@ -82,6 +86,49 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 	}
 }
 
+
+void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert) {
+
+	std::vector<char> cSubject(1024,'\0');
+
+	X509_NAME* name = X509_get_subject_name(x);
+	X509_NAME* issuer = X509_get_issuer_name(x);
+	const ASN1_STRING* data;
+	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name,0));
+
+	int countOfIssuerData = X509_get_ext_count(x);
+	
+	const ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 4));
+
+	X509_NAME_oneline(X509_get_subject_name(x), cSubject.data(), sizeof(cSubject));
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		L"CA");               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
+
+	CERT_NAME_BLOB blob;
+	blob.cbData = cSubject.size();
+	blob.pbData = (BYTE *)cSubject.data();
+	*cert = CertFindCertificateInStore(hSystemStore,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_SUBJECT_NAME,
+		&blob,
+		NULL);
+
+	CertCloseStore(
+		hSystemStore,
+		CERT_CLOSE_STORE_CHECK_FLAG);
+}
+
 void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert)
 {
 	HCERTSTORE hSystemStore = CertOpenStore(
@@ -107,4 +154,8 @@ void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCER
 		CERT_FIND_KEY_IDENTIFIER,
 		&blob,
 		NULL);
+
+	CertCloseStore(
+		hSystemStore,
+		CERT_CLOSE_STORE_CHECK_FLAG);
 }
