@@ -15,9 +15,16 @@ public:
 
 	void GetTestCert(PCCERT_CONTEXT* cert);
 	void GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert);
+	void GetCertByAKIByBlob(const wchar_t* pvPara, CRYPT_DATA_BLOB* akiBlob, PCCERT_CONTEXT* cert);
 	//void GetCertBySKI(const ASN1_OCTET_STRING* ski, PCCERT_CONTEXT* cert);
 	void GetCertByIssuer(const X509* x, PCCERT_CONTEXT* cert);
 	void GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert);
 	void ExportCertToFile(PCCERT_CONTEXT* cert, OutputFileFormat  fileFormat);
+
+	void GetTopCertFromStore(const wchar_t * pvPara , PCCERT_CONTEXT inputCert, PCCERT_CONTEXT *outputCert);
+
+	void GetAKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputAKI);
+	void GetSKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputSKI);
+	bool isTopCert(PCCERT_CONTEXT inputCert);
 };
 

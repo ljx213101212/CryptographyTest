@@ -213,3 +213,173 @@ void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCER
 		hSystemStore,
 		CERT_CLOSE_STORE_CHECK_FLAG);
 }
+
+void  CertificateStoreOperation::GetCertByAKIByBlob(const wchar_t* pvPara, CRYPT_DATA_BLOB* akiBlob, PCCERT_CONTEXT* cert) {
+
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		pvPara);               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
+
+	CRYPT_HASH_BLOB blob = (CRYPT_DATA_BLOB)*akiBlob;
+
+	*cert = CertFindCertificateInStore(hSystemStore,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_KEY_IDENTIFIER,
+		&blob,
+		NULL);
+
+	CertCloseStore(
+		hSystemStore,
+		CERT_CLOSE_STORE_CHECK_FLAG);
+}
+
+bool CertificateStoreOperation::isTopCert(PCCERT_CONTEXT inputCert) {
+
+	
+	CRYPT_DATA_BLOB akiBlob;
+	CRYPT_DATA_BLOB skiBlob;
+	GetAKIFromCert(inputCert, &akiBlob);
+	GetSKIFromCert(inputCert, &skiBlob);
+	bool ret = (0 == std::memcmp(akiBlob.pbData, skiBlob.pbData, akiBlob.cbData));
+	return ret;
+}
+
+void CertificateStoreOperation::GetAKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputAKI) {
+
+	PCERT_EXTENSION ext;
+	DWORD dwsize = 0;
+	CRYPT_DATA_BLOB* AuthorityKeyId = outputAKI;
+	BOOL ret = FALSE;
+	if ((ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension)))
+	{
+		CERT_AUTHORITY_KEY_ID_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			X509_AUTHORITY_KEY_ID, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		/*outputAKI = &info->KeyId;*/
+		outputAKI->cbData = info->KeyId.cbData;
+		outputAKI->pbData = info->KeyId.pbData;
+
+	}
+	else if (ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER2,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension))
+	{
+		CERT_AUTHORITY_KEY_ID2_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			X509_AUTHORITY_KEY_ID2, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		outputAKI->cbData = info->KeyId.cbData;
+		outputAKI->pbData = info->KeyId.pbData;
+	}
+}
+
+
+void CertificateStoreOperation::GetSKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputSKI) {
+
+	PCERT_EXTENSION ext;
+	DWORD dwsize = 0;
+	CRYPT_DATA_BLOB * subjectKeyId = outputSKI;
+	BOOL ret = FALSE;
+	if ((ext = CertFindExtension(szOID_SUBJECT_KEY_IDENTIFIER,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension)))
+	{
+		CERT_AUTHORITY_KEY_ID_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			szOID_SUBJECT_KEY_IDENTIFIER, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		outputSKI->cbData = info->KeyId.cbData;
+		outputSKI->pbData = info->KeyId.pbData;
+	}
+	else if (ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER2,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension))
+	{
+		CERT_AUTHORITY_KEY_ID2_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			szOID_SUBJECT_KEY_IDENTIFIER, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		outputSKI->cbData = info->KeyId.cbData;
+		outputSKI->pbData = info->KeyId.pbData;
+	}
+}
+
+void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCERT_CONTEXT inputCert, PCCERT_CONTEXT* outputCert) {
+	
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		pvPara);               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
+
+	PCCERT_CONTEXT outCert;
+	PCERT_EXTENSION ext;
+	DWORD dwsize = 0;
+	BOOL ret = FALSE;
+	CRYPT_DATA_BLOB  AuthorityKeyId;
+	if ((ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension)))
+	{
+		CERT_AUTHORITY_KEY_ID_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			X509_AUTHORITY_KEY_ID, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		AuthorityKeyId = info->KeyId;
+	}
+	else if (ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER2,
+		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension))
+	{
+		CERT_AUTHORITY_KEY_ID2_INFO* info;
+		ret = CryptDecodeObjectEx(MY_ENCODING_TYPE,
+			X509_AUTHORITY_KEY_ID2, ext->Value.pbData, ext->Value.cbData,
+			CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+			&info, &dwsize);
+		AuthorityKeyId = info->KeyId;
+	}
+
+	GetCertByAKIByBlob(L"Root", &AuthorityKeyId, &outCert);
+	bool isTop = isTopCert(outCert);
+
+
+
+	/*inputCert->pCertInfo->IssuerUniqueId
+	const ASN1_OCTET_STRING* aki = */
+	//CertGetNameString(, CERT_NAME_SIMPLE_DISPLAY_TYPE);
+	//DWORD dwsize = 0;
+	//PCERT_EXTENSION ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER, inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension);
+	///*CryptDecodeObjectEx(MY_ENCODING_TYPE,
+	//	X509_AUTHORITY_KEY_ID, ext->Value.pbData, ext->Value.cbData,
+	//	CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+	//	inputCert->pCertInfo, &dwsize);*/
+	//CERT_AUTHORITY_KEY_ID2_INFO* info;
+	//PCERT_EXTENSION ext2 = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER2, inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension);
+	//CryptDecodeObjectEx(MY_ENCODING_TYPE,
+	//	X509_AUTHORITY_KEY_ID, ext2->Value.pbData, ext2->Value.cbData,
+	//	CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
+	//	&info, &dwsize);
+
+
+
+	//CertAddEncodedCertificateToStore
+}
