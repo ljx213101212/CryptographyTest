@@ -90,17 +90,27 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert) {
 
 	std::vector<char> cSubject(1024,'\0');
+	std::vector<char> cIssuer(1024, '\0');
+	std::vector<char> cIssuerReversed(1024, '\0');
 
 	X509_NAME* name = X509_get_subject_name(x);
 	X509_NAME* issuer = X509_get_issuer_name(x);
 	const ASN1_STRING* data;
 	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name,0));
 
-	int countOfIssuerData = X509_get_ext_count(x);
+	int countOfIssuerData = X509_NAME_entry_count(issuer);
+
+
+
+	//for (int i = 0, j = countOfIssuerData - 1; i < countOfIssuerData; i++,j--) {
+	//	const ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, i));
+
+	//}
 	
 	const ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 4));
 
 	X509_NAME_oneline(X509_get_subject_name(x), cSubject.data(), sizeof(cSubject));
+	X509_NAME_oneline(X509_get_issuer_name(x), cIssuer.data(), sizeof(cIssuer));
 	HCERTSTORE hSystemStore = CertOpenStore(
 		CERT_STORE_PROV_SYSTEM, // System store will be a 
 								// virtual store
@@ -110,17 +120,33 @@ void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* 
 		CERT_SYSTEM_STORE_CURRENT_USER,
 		// Set the system store location in the
 		// registry
-		L"CA");               // Could have used other predefined 
+		L"Root");               // Could have used other predefined 
 								// system stores
 								// including Trust, CA, or Root
 
+	BYTE bIssuerData[1024];
+	DWORD bIssuerLength = 0;
+	//CertStrToName(X509_ASN_ENCODING, (LPCWSTR)cIssuer.data(), CERT_OID_NAME_STR, NULL,
+	//	bIssuerData, &bIssuerLength, NULL);
+
+	const unsigned char* pder[1024];
+	size_t sizeIssuerLength = 0;
+
+	//Key method.
+	X509_NAME_get0_der(issuer, pder, &sizeIssuerLength);
 	CERT_NAME_BLOB blob;
-	blob.cbData = cSubject.size();
-	blob.pbData = (BYTE *)cSubject.data();
+	blob.cbData = sizeIssuerLength;
+	blob.pbData = (BYTE*)*pder;
+	/*blob.cbData = 0x1a;
+	blob.pbData = (BYTE*)"CrazyFolks";*/
+
+	std::wstring wIssuer(cIssuer.begin(), cIssuer.end());
+	LPWSTR IssuerSTR = (LPWSTR)wIssuer.c_str();
+
 	*cert = CertFindCertificateInStore(hSystemStore,
 		MY_ENCODING_TYPE,
 		0,
-		CERT_FIND_SUBJECT_NAME,
+		CERT_FIND_ISSUER_NAME,
 		&blob,
 		NULL);
 
