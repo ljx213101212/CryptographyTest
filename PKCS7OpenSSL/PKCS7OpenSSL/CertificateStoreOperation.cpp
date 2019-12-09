@@ -87,30 +87,11 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 }
 
 
-void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert) {
-
-	std::vector<char> cSubject(1024,'\0');
+void CertificateStoreOperation::GetCertByIssuer(const X509* x, PCCERT_CONTEXT* cert){
 	std::vector<char> cIssuer(1024, '\0');
-	std::vector<char> cIssuerReversed(1024, '\0');
-
-	X509_NAME* name = X509_get_subject_name(x);
 	X509_NAME* issuer = X509_get_issuer_name(x);
 	const ASN1_STRING* data;
-	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name,0));
-
-	int countOfIssuerData = X509_NAME_entry_count(issuer);
-
-
-
-	//for (int i = 0, j = countOfIssuerData - 1; i < countOfIssuerData; i++,j--) {
-	//	const ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, i));
-
-	//}
-	
-	const ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 4));
-
-	X509_NAME_oneline(X509_get_subject_name(x), cSubject.data(), sizeof(cSubject));
-	X509_NAME_oneline(X509_get_issuer_name(x), cIssuer.data(), sizeof(cIssuer));
+	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 0));
 	HCERTSTORE hSystemStore = CertOpenStore(
 		CERT_STORE_PROV_SYSTEM, // System store will be a 
 								// virtual store
@@ -123,30 +104,77 @@ void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* 
 		L"Root");               // Could have used other predefined 
 								// system stores
 								// including Trust, CA, or Root
+	
+	const unsigned char* pder[1024];
+	size_t sizeIssuerLength = 0;
+	//Get encoded issuer data.
+	X509_NAME_get0_der(issuer, pder, &sizeIssuerLength);
+	CERT_NAME_BLOB blob;
+	blob.cbData = sizeIssuerLength;
+	blob.pbData = (BYTE*)*pder;
+	*cert = CertFindCertificateInStore(hSystemStore,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_ISSUER_NAME,
+		&blob,
+		NULL);
+
+	CertCloseStore(
+		hSystemStore,
+		CERT_CLOSE_STORE_CHECK_FLAG);
+}
+
+/**
+Useful method:
+1. X509_NAME_entry_count
+2. ASN1_STRING* issuerData = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 4));
+3. X509_NAME_oneline(X509_get_subject_name(x), cSubject.data(), sizeof(cSubject)); (don't know how to use oneline data yet)
+4. CertStrToName(X509_ASN_ENCODING, (LPCWSTR)cIssuer.data(), CERT_OID_NAME_STR, NULL, IssuerData, &bIssuerLength, NULL); (might be useful later).
+*/
+void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* cert) {
+
+	std::vector<char> cSubject(1024,'\0');
+	X509_NAME* name = X509_get_subject_name(x);
+	const ASN1_STRING* data;
+	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name,0));
+
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		L"CA");               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
 
 	BYTE bIssuerData[1024];
 	DWORD bIssuerLength = 0;
 	//CertStrToName(X509_ASN_ENCODING, (LPCWSTR)cIssuer.data(), CERT_OID_NAME_STR, NULL,
 	//	bIssuerData, &bIssuerLength, NULL);
 
-	const unsigned char* pder[1024];
-	size_t sizeIssuerLength = 0;
+	size_t sizeSubjectLength = 0;
+	X509_NAME_get0_der(name, NULL, &sizeSubjectLength);
+	std::vector<const unsigned char*> pder(sizeSubjectLength, {});
 
 	//Key method.
-	X509_NAME_get0_der(issuer, pder, &sizeIssuerLength);
+	X509_NAME_get0_der(name, pder.data(), &sizeSubjectLength);
 	CERT_NAME_BLOB blob;
-	blob.cbData = sizeIssuerLength;
-	blob.pbData = (BYTE*)*pder;
+	blob.cbData = sizeSubjectLength;
+	blob.pbData = (BYTE*)*pder.data();
 	/*blob.cbData = 0x1a;
 	blob.pbData = (BYTE*)"CrazyFolks";*/
 
-	std::wstring wIssuer(cIssuer.begin(), cIssuer.end());
-	LPWSTR IssuerSTR = (LPWSTR)wIssuer.c_str();
+	//std::wstring wIssuer(cSubject.begin(), cSubject.end());
+	//LPWSTR IssuerSTR = (LPWSTR)wIssuer.c_str();
 
 	*cert = CertFindCertificateInStore(hSystemStore,
 		MY_ENCODING_TYPE,
 		0,
-		CERT_FIND_ISSUER_NAME,
+		CERT_FIND_SUBJECT_NAME,
 		&blob,
 		NULL);
 
