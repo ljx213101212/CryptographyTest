@@ -101,7 +101,7 @@ void CertificateStoreOperation::GetCertByIssuer(const X509* x, PCCERT_CONTEXT* c
 		CERT_SYSTEM_STORE_CURRENT_USER,
 		// Set the system store location in the
 		// registry
-		L"Root");               // Could have used other predefined 
+		L"CA");               // Could have used other predefined 
 								// system stores
 								// including Trust, CA, or Root
 	
@@ -336,7 +336,7 @@ void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCER
 	PCERT_EXTENSION ext;
 	DWORD dwsize = 0;
 	BOOL ret = FALSE;
-	CRYPT_DATA_BLOB  AuthorityKeyId;
+	CRYPT_DATA_BLOB AuthorityKeyId;
 	if ((ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER,
 		inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension)))
 	{
@@ -357,29 +357,46 @@ void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCER
 			&info, &dwsize);
 		AuthorityKeyId = info->KeyId;
 	}
-
 	GetCertByAKIByBlob(L"Root", &AuthorityKeyId, &outCert);
+	if (outCert == nullptr) {
+		return;
+	}
 	bool isTop = isTopCert(outCert);
+	if (isTop) {
+		memcpy(outputCert, &outCert, outCert->cbCertEncoded);
+	}
+	else {
+		outputCert = nullptr;
+	}
+}
 
 
+void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, const X509* x, PCCERT_CONTEXT* outputCert) {
 
-	/*inputCert->pCertInfo->IssuerUniqueId
-	const ASN1_OCTET_STRING* aki = */
-	//CertGetNameString(, CERT_NAME_SIMPLE_DISPLAY_TYPE);
-	//DWORD dwsize = 0;
-	//PCERT_EXTENSION ext = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER, inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension);
-	///*CryptDecodeObjectEx(MY_ENCODING_TYPE,
-	//	X509_AUTHORITY_KEY_ID, ext->Value.pbData, ext->Value.cbData,
-	//	CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
-	//	inputCert->pCertInfo, &dwsize);*/
-	//CERT_AUTHORITY_KEY_ID2_INFO* info;
-	//PCERT_EXTENSION ext2 = CertFindExtension(szOID_AUTHORITY_KEY_IDENTIFIER2, inputCert->pCertInfo->cExtension, inputCert->pCertInfo->rgExtension);
-	//CryptDecodeObjectEx(MY_ENCODING_TYPE,
-	//	X509_AUTHORITY_KEY_ID, ext2->Value.pbData, ext2->Value.cbData,
-	//	CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG, NULL,
-	//	&info, &dwsize);
-
-
-
-	//CertAddEncodedCertificateToStore
+	HCERTSTORE hSystemStore = CertOpenStore(
+		CERT_STORE_PROV_SYSTEM, // System store will be a 
+								// virtual store
+		0,                      // Encoding type not needed 
+								// with this PROV
+		NULL,                   // Accept the default HCRYPTPROV
+		CERT_SYSTEM_STORE_CURRENT_USER,
+		// Set the system store location in the
+		// registry
+		pvPara);               // Could have used other predefined 
+								// system stores
+								// including Trust, CA, or Root
+	
+	PCCERT_CONTEXT sourceCert;
+	GetCertByIssuer(x, &sourceCert);
+	PCCERT_CONTEXT* pCertContext = new PCCERT_CONTEXT();
+	size_t outputPtr = 0;
+	while (*pCertContext = CertEnumCertificatesInStore(
+		hSystemStore,
+		*pCertContext))
+	{	
+		if (CertCompareCertificate(MY_ENCODING_TYPE, (*pCertContext)->pCertInfo, sourceCert->pCertInfo)) {
+			memcpy(outputCert, pCertContext, (*pCertContext)->cbCertEncoded);
+			return;
+		}
+	}
 }

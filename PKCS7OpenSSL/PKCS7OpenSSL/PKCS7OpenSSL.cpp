@@ -84,14 +84,24 @@ int main()
 		/*X509_NAME* subjectName = X509_get_subject_name(x);
 		char cSubject[1024];
 		X509_NAME_oneline(X509_get_subject_name(x), cSubject, sizeof(cSubject));*/
-		PCCERT_CONTEXT targetCert;
+		
+	/*	PCCERT_CONTEXT targetCert;
 		cso.GetCertByIssuer(x, &targetCert);
-
 		PCCERT_CONTEXT rootCert;
-		cso.GetTopCertFromStore(L"Root", targetCert, &rootCert);
+		cso.GetTopCertFromStore(L"Root", targetCert, &rootCert);*/
 
-		X509_STORE_add_cert(store3, x);
+		PCCERT_CONTEXT *cert = new PCCERT_CONTEXT();
+		cso.EnumerateCertFromStore(L"CA", x, cert);
+	
+		PCCERT_CONTEXT rootCert;
+		cso.GetTopCertFromStore(L"Root", *cert, &rootCert);
+		delete cert;
+		/*d2i_X509(rootCert->pbCertEncoded,)*/
+		X509* tempX = d2i_X509(NULL, (const unsigned char**)&(rootCert->pbCertEncoded), rootCert->cbCertEncoded);
+		X509_STORE_add_cert(store3, tempX);
 		int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store3, pContentBio, NULL, PKCS7_NOCRL);
+	
+
 	}
 
 

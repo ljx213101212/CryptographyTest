@@ -25,6 +25,8 @@ public:
 
 	void GetAKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputAKI);
 	void GetSKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_DATA_BLOB* outputSKI);
+
+	void EnumerateCertFromStore(const wchar_t* pvPara, const X509* x ,PCCERT_CONTEXT* outputCert);
 	bool isTopCert(PCCERT_CONTEXT inputCert);
 };
 
