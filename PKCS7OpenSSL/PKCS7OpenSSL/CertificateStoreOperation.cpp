@@ -317,7 +317,7 @@ void CertificateStoreOperation::GetSKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_D
 	}
 }
 
-void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCERT_CONTEXT inputCert, PCCERT_CONTEXT* outputCert) {
+void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCERT_CONTEXT inputCert, PCCERT_CONTEXT& outputCert) {
 	
 	HCERTSTORE hSystemStore = CertOpenStore(
 		CERT_STORE_PROV_SYSTEM, // System store will be a 
@@ -363,7 +363,8 @@ void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCER
 	}
 	bool isTop = isTopCert(outCert);
 	if (isTop) {
-		memcpy(outputCert, &outCert, outCert->cbCertEncoded);
+	/*	memcpy(outputCert, &outCert, outCert->cbCertEncoded);*/
+		outputCert = outCert;
 	}
 	else {
 		outputCert = nullptr;
@@ -371,7 +372,7 @@ void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCER
 }
 
 
-void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, const X509* x, PCCERT_CONTEXT* outputCert) {
+void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, const X509* x, PCCERT_CONTEXT& outputCert) {
 
 	HCERTSTORE hSystemStore = CertOpenStore(
 		CERT_STORE_PROV_SYSTEM, // System store will be a 
@@ -388,15 +389,16 @@ void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, co
 	
 	PCCERT_CONTEXT sourceCert;
 	GetCertByIssuer(x, &sourceCert);
-	PCCERT_CONTEXT* pCertContext = new PCCERT_CONTEXT();
+	PCCERT_CONTEXT pCertContext = NULL;
 	size_t outputPtr = 0;
-	while (*pCertContext = CertEnumCertificatesInStore(
+	while (pCertContext = CertEnumCertificatesInStore(
 		hSystemStore,
-		*pCertContext))
+		pCertContext))
 	{	
-		if (CertCompareCertificate(MY_ENCODING_TYPE, (*pCertContext)->pCertInfo, sourceCert->pCertInfo)) {
-			memcpy(outputCert, pCertContext, (*pCertContext)->cbCertEncoded);
+		if (CertCompareCertificate(MY_ENCODING_TYPE, pCertContext->pCertInfo, sourceCert->pCertInfo)) {
+			outputCert = pCertContext;
 			return;
 		}
 	}
+
 }
