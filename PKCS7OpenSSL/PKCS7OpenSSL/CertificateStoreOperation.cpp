@@ -25,18 +25,7 @@ void hex2bin(const char* src, char* target)
 void CertificateStoreOperation::GetTestCert(PCCERT_CONTEXT* cert) {
 
 
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		L"Root");               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
+	HCERTSTORE hSystemStore = hSystemStoreROOT;
 	CRYPT_HASH_BLOB blob;
 	const char* hexSubjectKeyIdentifier = "0a007b4107ce41a0b1b2772e84fddcc4913f6180";
 	char hexSubjectKeyIdentifiderBin[20];
@@ -51,10 +40,6 @@ void CertificateStoreOperation::GetTestCert(PCCERT_CONTEXT* cert) {
 		CERT_FIND_KEY_IDENTIFIER,
 		&blob,
 		NULL);
-
-	CertCloseStore(
-		hSystemStore,
-		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
 
@@ -62,8 +47,7 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 
 	DWORD num = 1;
 	/* open root certificate store */
-	HCERTSTORE hCertStore = CertOpenSystemStore(NULL, L"ROOT");
-
+	HCERTSTORE hCertStore = hSystemStoreROOT;
 	PCCERT_CONTEXT pCert = *cert;
 	/* if you need save certificate in PEM */
 	DWORD size = 0;
@@ -87,23 +71,12 @@ void CertificateStoreOperation::ExportCertToFile(PCCERT_CONTEXT *cert, OutputFil
 }
 
 
-void CertificateStoreOperation::GetCertByIssuer(const X509* x, PCCERT_CONTEXT* cert){
+void CertificateStoreOperation::GetCertByIssuer(const wchar_t* pvPara, const X509* x, PCCERT_CONTEXT* cert){
 	std::vector<char> cIssuer(1024, '\0');
 	X509_NAME* issuer = X509_get_issuer_name(x);
 	const ASN1_STRING* data;
 	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(issuer, 0));
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		L"CA");               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
+	HCERTSTORE hSystemStore = pvPara == hSystemStoreCA ? hSystemStoreCA : hSystemStoreROOT;
 	
 	const unsigned char* pder[1024];
 	size_t sizeIssuerLength = 0;
@@ -118,10 +91,6 @@ void CertificateStoreOperation::GetCertByIssuer(const X509* x, PCCERT_CONTEXT* c
 		CERT_FIND_ISSUER_NAME,
 		&blob,
 		NULL);
-
-	CertCloseStore(
-		hSystemStore,
-		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
 /**
@@ -138,19 +107,7 @@ void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* 
 	const ASN1_STRING* data;
 	data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name,0));
 
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		L"CA");               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
-
+	HCERTSTORE hSystemStore = hSystemStoreCA;
 	BYTE bIssuerData[1024];
 	DWORD bIssuerLength = 0;
 	//CertStrToName(X509_ASN_ENCODING, (LPCWSTR)cIssuer.data(), CERT_OID_NAME_STR, NULL,
@@ -167,36 +124,19 @@ void CertificateStoreOperation::GetCertBySubject(const X509* x, PCCERT_CONTEXT* 
 	blob.pbData = (BYTE*)*pder.data();
 	/*blob.cbData = 0x1a;
 	blob.pbData = (BYTE*)"CrazyFolks";*/
-
 	//std::wstring wIssuer(cSubject.begin(), cSubject.end());
 	//LPWSTR IssuerSTR = (LPWSTR)wIssuer.c_str();
-
 	*cert = CertFindCertificateInStore(hSystemStore,
 		MY_ENCODING_TYPE,
 		0,
 		CERT_FIND_SUBJECT_NAME,
 		&blob,
 		NULL);
-
-	CertCloseStore(
-		hSystemStore,
-		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
-void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert)
+void CertificateStoreOperation::GetCertByAKI(const wchar_t* pvPara, const ASN1_OCTET_STRING* aki, PCCERT_CONTEXT* cert)
 {
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		L"Root");               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
+	HCERTSTORE hSystemStore = pvPara == PV_PARA_STORE_CA ? hSystemStoreCA : hSystemStoreROOT;
 	CRYPT_HASH_BLOB blob;
 	
 	//std::reverse_copy(std::begin(hexSubjectKeyIdentifiderBin), std::end(hexSubjectKeyIdentifiderBin), std::begin(hexSubjectKeyIdentifiderBinReverse));
@@ -208,39 +148,18 @@ void CertificateStoreOperation::GetCertByAKI(const ASN1_OCTET_STRING* aki, PCCER
 		CERT_FIND_KEY_IDENTIFIER,
 		&blob,
 		NULL);
-
-	CertCloseStore(
-		hSystemStore,
-		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
 void  CertificateStoreOperation::GetCertByAKIByBlob(const wchar_t* pvPara, CRYPT_DATA_BLOB* akiBlob, PCCERT_CONTEXT* cert) {
 
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		pvPara);               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
-
+	HCERTSTORE hSystemStore = pvPara == PV_PARA_STORE_CA ? hSystemStoreCA : hSystemStoreROOT;
 	CRYPT_HASH_BLOB blob = (CRYPT_DATA_BLOB)*akiBlob;
-
 	*cert = CertFindCertificateInStore(hSystemStore,
 		MY_ENCODING_TYPE,
 		0,
 		CERT_FIND_KEY_IDENTIFIER,
 		&blob,
 		NULL);
-
-	CertCloseStore(
-		hSystemStore,
-		CERT_CLOSE_STORE_CHECK_FLAG);
 }
 
 bool CertificateStoreOperation::isTopCert(PCCERT_CONTEXT inputCert) {
@@ -319,19 +238,7 @@ void CertificateStoreOperation::GetSKIFromCert(PCCERT_CONTEXT inputCert, CRYPT_D
 
 void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCERT_CONTEXT inputCert, PCCERT_CONTEXT& outputCert) {
 	
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		pvPara);               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
-
+	HCERTSTORE hSystemStore = pvPara == PV_PARA_STORE_CA ? hSystemStoreCA : hSystemStoreROOT;
 	PCCERT_CONTEXT outCert;
 	PCERT_EXTENSION ext;
 	DWORD dwsize = 0;
@@ -371,24 +278,11 @@ void CertificateStoreOperation::GetTopCertFromStore(const wchar_t* pvPara, PCCER
 	}
 }
 
-
 void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, const X509* x, PCCERT_CONTEXT& outputCert) {
 
-	HCERTSTORE hSystemStore = CertOpenStore(
-		CERT_STORE_PROV_SYSTEM, // System store will be a 
-								// virtual store
-		0,                      // Encoding type not needed 
-								// with this PROV
-		NULL,                   // Accept the default HCRYPTPROV
-		CERT_SYSTEM_STORE_CURRENT_USER,
-		// Set the system store location in the
-		// registry
-		pvPara);               // Could have used other predefined 
-								// system stores
-								// including Trust, CA, or Root
-	
+	HCERTSTORE hSystemStore = pvPara == PV_PARA_STORE_CA ? hSystemStoreCA : hSystemStoreROOT;
 	PCCERT_CONTEXT sourceCert;
-	GetCertByIssuer(x, &sourceCert);
+	GetCertByIssuer(pvPara,x, &sourceCert);
 	PCCERT_CONTEXT pCertContext = NULL;
 	size_t outputPtr = 0;
 	while (pCertContext = CertEnumCertificatesInStore(
@@ -401,4 +295,58 @@ void CertificateStoreOperation::EnumerateCertFromStore(const wchar_t* pvPara, co
 		}
 	}
 
+}
+
+void CertificateStoreOperation::GetRootCAFromIntermediateStore(PCCERT_CONTEXT inputCert, PCCERT_CONTEXT& outputCert) {
+	
+	if (inputCert == NULL){
+		return;
+	}
+	X509* x = d2i_X509(NULL, (const unsigned char**) &(inputCert->pbCertEncoded), inputCert->cbCertEncoded);
+	X509_NAME* issuer = X509_get_issuer_name(x);
+	//Get issuer length
+	size_t issuerSize = 0;
+	X509_NAME_get0_der(issuer, NULL, &issuerSize);
+	std::vector<const unsigned char*> vDer(issuerSize, {});
+	X509_NAME_get0_der(issuer, vDer.data(), &issuerSize);
+	CERT_NAME_BLOB blob;
+	blob.cbData = issuerSize;
+	blob.pbData = (BYTE*)*vDer.data();
+
+	//use issuer to search next cert's subject.
+	PCCERT_CONTEXT nextCert = CertFindCertificateInStore(hSystemStoreCA,
+		MY_ENCODING_TYPE,
+		0,
+		CERT_FIND_SUBJECT_NAME,
+		&blob,
+		NULL);
+
+	//Means the next cert should be in Root Trusted CA folder in windows certificate store.
+	if (nextCert == NULL) {
+		outputCert = nextCert;
+		return;
+	}
+	//Means the inputCert is identical to next cert, it's a self signed ROOT CA. Subject == Issuer
+	else if (CertCompareCertificate(MY_ENCODING_TYPE, nextCert->pCertInfo, inputCert->pCertInfo)) {
+		outputCert = nextCert;
+		return;
+	}
+	else {
+		//recursive.
+		GetRootCAFromIntermediateStore(nextCert, outputCert);
+	}
+}
+
+void CertificateStoreOperation::GetRootCAFromRootStore(PCCERT_CONTEXT inputCert, PCCERT_CONTEXT& outputCert)
+{
+	CRYPT_DATA_BLOB AuthorityKeyId;
+	GetAKIFromCert(inputCert, &AuthorityKeyId);
+	PCCERT_CONTEXT tempCert;
+	GetCertByAKIByBlob(L"Root", &AuthorityKeyId, &tempCert);
+	if (tempCert == NULL) {
+		return;
+	}
+	if (isTopCert(tempCert)) {
+		outputCert = tempCert;
+	}
 }

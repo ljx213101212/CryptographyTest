@@ -40,7 +40,7 @@ int main()
 	X509_STORE* store2 = NULL;
 	store2 = X509_STORE_new();
 	lookup2 = X509_STORE_add_lookup(store2, X509_LOOKUP_file());
-	CertificateStoreOperation cso;
+	CertificateStoreOperation cso = CertificateStoreOperation();
 	PCCERT_CONTEXT cert;
 	cso.GetTestCert(&cert);
 	cso.ExportCertToFile(&cert, CertificateStoreOperation::OutputFileFormat::PEM);
@@ -89,25 +89,23 @@ int main()
 		cso.GetCertByIssuer(x, &targetCert);
 		PCCERT_CONTEXT rootCert;
 		cso.GetTopCertFromStore(L"Root", targetCert, &rootCert);*/
+		
 
 		PCCERT_CONTEXT cert = nullptr;
-		cso.EnumerateCertFromStore(L"CA", x, cert);
+		PCCERT_CONTEXT rootImmediateCert = nullptr;
+		cso.GetCertByIssuer(L"CA" ,x, &cert);
+		cso.GetRootCAFromIntermediateStore(cert, rootImmediateCert);
 		PCCERT_CONTEXT rootCert = nullptr;
-		cso.GetTopCertFromStore(L"Root", cert, rootCert);
+		cso.GetRootCAFromRootStore(cert, rootCert);
 		X509* tempX = d2i_X509(NULL, (const unsigned char**) & (rootCert->pbCertEncoded), rootCert->cbCertEncoded);
 		X509_STORE_add_cert(store3, tempX);
 		if (cert) {
-			//add to store
 			CertFreeCertificateContext(cert);
 		}
 		if (rootCert) {
 			CertFreeCertificateContext(rootCert);
 		}
-		//delete cert;
-		/*d2i_X509(rootCert->pbCertEncoded,)*/
 		int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store3, pContentBio, NULL, PKCS7_NOCRL);
-	
-
 	}
 
 
