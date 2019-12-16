@@ -25,39 +25,40 @@ int main()
 	// copies all data into buffer
 	std::vector<char> buffer(std::istreambuf_iterator<char>(input), {});
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
+	CertificateStoreOperation cso = CertificateStoreOperation();
 
 	//Load crt file directly
-	X509_LOOKUP* lookup = NULL;
-	X509_STORE* store = NULL;
-	store = X509_STORE_new();
-	lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
-	const char* certFile = "D:\\downloadTest\\certTest7\\ca.crt"; //Root Trusted CA certificate
-	int res = X509_load_cert_file(lookup, certFile, X509_FILETYPE_PEM);
+	//X509_LOOKUP* lookup = NULL;
+	//X509_STORE* store = NULL;
+	//store = X509_STORE_new();
+	//lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+	//const char* certFile = "D:\\downloadTest\\certTest7\\ca.crt"; //Root Trusted CA certificate
+	//int res = X509_load_cert_file(lookup, certFile, X509_FILETYPE_PEM);
 
 
 	//Load cert object from certificate store , put into a temp file then load the temp file.
-	X509_LOOKUP * lookup2 = NULL;
-	X509_STORE* store2 = NULL;
-	store2 = X509_STORE_new();
-	lookup2 = X509_STORE_add_lookup(store2, X509_LOOKUP_file());
-	CertificateStoreOperation cso = CertificateStoreOperation();
-	PCCERT_CONTEXT cert;
-	cso.GetTestCert(&cert);
-	cso.ExportCertToFile(&cert, CertificateStoreOperation::OutputFileFormat::PEM);
-	int res2 = X509_load_cert_file(lookup2, "1.pem", X509_FILETYPE_PEM);
+	//X509_LOOKUP * lookup2 = NULL;
+	//X509_STORE* store2 = NULL;
+	//store2 = X509_STORE_new();
+	//lookup2 = X509_STORE_add_lookup(store2, X509_LOOKUP_file());
+	//CertificateStoreOperation cso = CertificateStoreOperation();
+	//PCCERT_CONTEXT cert;
+	//cso.GetTestCert(&cert);
+	//cso.ExportCertToFile(&cert, CertificateStoreOperation::OutputFileFormat::PEM);
+	//int res2 = X509_load_cert_file(lookup2, "1.pem", X509_FILETYPE_PEM);
    
 	//Load cert object then construct X509 object -> Get AKI (Authority Key Identifier).
-	string filePath2 = "D:\\downloadTest\\certTest7\\crazyfolk.pem";
-	std::ifstream input2(filePath2, std::ios::binary);
-	// copies all data into buffer
-	std::vector<char> buffer2(std::istreambuf_iterator<char>(input2), {});
-	const unsigned char* pCertificate2 = reinterpret_cast<unsigned char*>(buffer2.data());
-	X509* x509Cert = NULL;
-	BIO* cbio, * kbio;
-	cbio = BIO_new_mem_buf(pCertificate2, buffer2.size());
-	x509Cert = PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
-	const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(x509Cert);
-	const GENERAL_NAMES* generalNames = X509_get0_authority_issuer(x509Cert);
+	//string filePath2 = "D:\\downloadTest\\certTest7\\crazyfolk.pem";
+	//std::ifstream input2(filePath2, std::ios::binary);
+	//// copies all data into buffer
+	//std::vector<char> buffer2(std::istreambuf_iterator<char>(input2), {});
+	//const unsigned char* pCertificate2 = reinterpret_cast<unsigned char*>(buffer2.data());
+	//X509* x509Cert = NULL;
+	//BIO* cbio, * kbio;
+	//cbio = BIO_new_mem_buf(pCertificate2, buffer2.size());
+	//x509Cert = PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
+	//const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(x509Cert);
+	//const GENERAL_NAMES* generalNames = X509_get0_authority_issuer(x509Cert);
 
 
 
@@ -66,7 +67,7 @@ int main()
 	PKCS7* pPkcs7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
 	int seqhdrlen = asn1_simple_hdr_len(pPkcs7->d.sign->contents->d.other->value.sequence->data, pPkcs7->d.sign->contents->d.other->value.sequence->length);
 	BIO* pContentBio = BIO_new_mem_buf(pPkcs7->d.sign->contents->d.other->value.sequence->data + seqhdrlen, pPkcs7->d.sign->contents->d.other->value.sequence->length - seqhdrlen);
-	int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store2, pContentBio, NULL, PKCS7_NOCRL);
+	//int nOk = PKCS7_verify(pPkcs7, pPkcs7->d.sign->cert, store2, pContentBio, NULL, PKCS7_NOCRL);
 	remove("1.pem");
 
 	//Construct X509 by PKCS7 pointer, then get aki.
