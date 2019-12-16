@@ -16,8 +16,8 @@
 #include <openssl/bytestring.h>
 #include <fstream>
 #include <vector>
-#include "C:/Work/boringssl/boringssl/crypto/bytestring/internal.h"
-#include "C:/Work/boringssl/boringssl/crypto/pkcs7/pkcs7.c"
+#include "../includes/bytestring/internal.h"
+#include "../includes/pkcs7/pkcs7.c"
 
 using namespace std;
 

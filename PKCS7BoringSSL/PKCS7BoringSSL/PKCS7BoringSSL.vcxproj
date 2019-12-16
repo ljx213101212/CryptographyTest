@@ -91,12 +91,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Work\boringssl\boringssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Work\boringssl\boringssl\include;D:\Work\boringssl\include\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;D:\Code\C++\CryptographyTest\PKCS7BoringSSL\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -109,12 +109,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Work\boringssl\boringssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Work\boringssl\boringssl\include;D:\Work\boringssl\include\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;D:\Code\C++\CryptographyTest\PKCS7BoringSSL\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
