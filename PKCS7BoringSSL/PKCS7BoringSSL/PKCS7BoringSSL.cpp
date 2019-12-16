@@ -14,8 +14,11 @@
 #include <openssl/pkcs7.h>
 #include <openssl/pem.h>
 #include <openssl/bytestring.h>
+#include <openssl/ssl.h>
+#include <openssl/bn.h>
 #include <fstream>
 #include <vector>
+#include "../includes/crypto/internal.h"
 #include "../includes/bytestring/internal.h"
 #include "../includes/pkcs7/pkcs7.c"
 
@@ -148,6 +151,40 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	size_t len) {
 	CBS cbs;
 	CBS_init(&cbs, *inp, len);
+	CBS tbs_cert;
+	CBS toplevel;
+	CBS_get_asn1(&cbs, &toplevel, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE);
+	CBS_get_optional_asn1(
+		&tbs_cert, NULL, NULL,
+		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+
+	//PKCS7_get_
+	//if (!CBS_get_asn1(&cbs, &toplevel, CBS_ASN1_SEQUENCE) ||
+	//	CBS_len(&cbs) != 0 ||
+	//	!CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE) ||
+	//	// version
+	//	!CBS_get_optional_asn1(
+	//		&tbs_cert, NULL, NULL,
+	//		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+	//	// serialNumber
+	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER) ||
+	//	// signature algorithm
+	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+	//	// issuer
+	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+	//	// validity
+	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
+	//	// subject
+	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE)) {
+	//	return nullptr;
+	//}
+	//ssl_cert_parse_pubkey(&cbs);
 	STACK_OF(X509*) out_digest;
 	out_digest = sk_X509_new_null();
 	PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
