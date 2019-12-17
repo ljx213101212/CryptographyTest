@@ -89,55 +89,6 @@ err:
 	return 0;
 }
 
-int pkcs7_parse_tbs_certificate(uint8_t** der_bytes, CBS* out, CBS* cbs) {
-	CBS in, content_info, content_type, wrapped_signed_data, signed_data, certificates;
-	CBS spcIndirectDataWrapper, spcIndirectDataContentType, wrappered_spc_indirect_data, inner_data, octet_data, octet_string;
-	uint64_t version;
-	int has_certificates;
-	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
-		!CBS_get_optional_asn1(
-			&signed_data, &certificates, &has_certificates,
-			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-		goto err;
-	}
-	CBS tbs_cert;
-	CBS toplevel;
-	CBS_get_asn1(&certificates, &toplevel, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE);
-	CBS_get_optional_asn1(
-		&tbs_cert, NULL, NULL,
-		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	//out = &tbs_cert;
-	CBS_init(out, CBS_data(&tbs_cert), CBS_len(&tbs_cert));
-	return 1;
-err:
-	OPENSSL_free(*der_bytes);
-	*der_bytes = NULL;
-	return 0;
-}
-
-int PKCS7_get_raw_tbs_certificate(vector<uint8_t>& out_tbs_certificate, size_t& out_tbs_certificate_size, CBS* cbs,
-	CRYPTO_BUFFER_POOL* pool) {
-	CBS tbs_certificate;
-	uint8_t* der_bytes = NULL;
-	int ret = 0;
-	if (!pkcs7_parse_tbs_certificate(&der_bytes, &tbs_certificate, cbs)) {
-		return ret;
-	}
-	out_tbs_certificate_size = CBS_len(&tbs_certificate);
-	uint8_t* tmp = (uint8_t*)CBS_data(&tbs_certificate);
-
-	out_tbs_certificate.resize(out_tbs_certificate_size);
-	out_tbs_certificate.assign(tmp, (tmp + out_tbs_certificate_size));
-	ret = 1;
-	return ret;
-}
-
 
 int PKCS7_get_raw_digests(vector<uint8_t>& out_digest, size_t &out_digest_size, CBS* cbs,
 	CRYPTO_BUFFER_POOL* pool) {
@@ -174,6 +125,91 @@ err:
 	return ret;
 }
 
+int pkcs7_parse_public_key_info(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+	CBS in, content_info, content_type, wrapped_signed_data, signed_data, certificates;
+	CBS spcIndirectDataWrapper, spcIndirectDataContentType, wrappered_spc_indirect_data, inner_data, octet_data, octet_string;
+	uint64_t version;
+	int has_certificates;
+	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
+		!CBS_get_optional_asn1(
+			&signed_data, &certificates, &has_certificates,
+			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+		goto err;
+	}
+	CBS public_key_info;
+	CBS toplevel;
+	CBS_get_asn1(&certificates, &toplevel, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&toplevel, &public_key_info, CBS_ASN1_SEQUENCE);
+	CBS_get_optional_asn1(
+		&public_key_info, NULL, NULL,
+		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0);
+	CBS_get_asn1(&public_key_info, NULL, CBS_ASN1_INTEGER);
+	CBS_get_asn1(&public_key_info, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&public_key_info, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&public_key_info, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&public_key_info, NULL, CBS_ASN1_SEQUENCE);
+	//out = &tbs_cert;
+	CBS_init(out, CBS_data(&public_key_info), CBS_len(&public_key_info));
+	return 1;
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+}
+
+int PKCS7_get_raw_public_key_info(vector<uint8_t>& out_public_key_info, size_t& out_public_key_info_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+	CBS public_key_info;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!pkcs7_parse_public_key_info(&der_bytes, &public_key_info, cbs)) {
+		return ret;
+	}
+	out_public_key_info_size = CBS_len(&public_key_info);
+	uint8_t* tmp = (uint8_t*)CBS_data(&public_key_info);
+
+	out_public_key_info.resize(out_public_key_info_size);
+	out_public_key_info.assign(tmp, (tmp + out_public_key_info_size));
+	ret = 1;
+	return ret;
+}
+
+int pkcs7_parse_tbs_certificate(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+	int ret = 0;
+	CBS in, top_level, signed_data, certificates;
+	*der_bytes = NULL;
+	int has_certificates;
+	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
+		!CBS_get_optional_asn1(
+			&signed_data, &certificates, &has_certificates,
+			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+		goto err;
+	}
+	CBS_init(out, CBS_data(&certificates), CBS_len(&certificates));
+	return 1;
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+}
+
+int PKCS7_get_raw_tbs_certificate(vector<uint8_t>& out_tbs_certificate, size_t& out_tbs_certificate_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+	CBS tbs_certificate;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!pkcs7_parse_tbs_certificate(&der_bytes, &tbs_certificate, cbs)) {
+		return ret;
+	}
+	out_tbs_certificate_size = CBS_len(&tbs_certificate);
+	uint8_t* tmp = (uint8_t*)CBS_data(&tbs_certificate);
+
+	out_tbs_certificate.resize(out_tbs_certificate_size);
+	out_tbs_certificate.assign(tmp, (tmp + out_tbs_certificate_size));
+	ret = 1;
+	return ret;
+}
+
 
 int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs) {
 
@@ -189,7 +225,17 @@ int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs
 
 }
 
-int PKCS7_get_tbs_certificate_value(CBS* cbs) {
+int PKCS7_get_public_key_info_value(CBS* cbs) {
+
+	int ret = 0;
+	size_t public_key_info_size = 0;
+	vector<uint8_t> public_key_info;
+	PKCS7_get_raw_public_key_info(public_key_info, public_key_info_size, cbs, NULL);
+	ret = 1;
+	return ret;
+}
+
+int PKCS7_get_tbs_certificate(CBS* cbs) {
 
 	int ret = 0;
 	size_t tbs_certificate_size = 0;
@@ -215,7 +261,8 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	STACK_OF(X509*) out_digest;
 	out_digest = sk_X509_new_null();
 	//PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
-	PKCS7_get_tbs_certificate_value(&cbs);
+	//PKCS7_get_public_key_info_value(&cbs);
+	PKCS7_get_tbs_certificate(&cbs);
 	return nullptr;
 }
 
