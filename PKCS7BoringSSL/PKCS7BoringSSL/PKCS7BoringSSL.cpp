@@ -89,6 +89,56 @@ err:
 	return 0;
 }
 
+int pkcs7_parse_tbs_certificate(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+	CBS in, content_info, content_type, wrapped_signed_data, signed_data, certificates;
+	CBS spcIndirectDataWrapper, spcIndirectDataContentType, wrappered_spc_indirect_data, inner_data, octet_data, octet_string;
+	uint64_t version;
+	int has_certificates;
+	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
+		!CBS_get_optional_asn1(
+			&signed_data, &certificates, &has_certificates,
+			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+		goto err;
+	}
+	CBS tbs_cert;
+	CBS toplevel;
+	CBS_get_asn1(&certificates, &toplevel, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE);
+	CBS_get_optional_asn1(
+		&tbs_cert, NULL, NULL,
+		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
+	//out = &tbs_cert;
+	CBS_init(out, CBS_data(&tbs_cert), CBS_len(&tbs_cert));
+	return 1;
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+}
+
+int PKCS7_get_raw_tbs_certificate(vector<uint8_t>& out_tbs_certificate, size_t& out_tbs_certificate_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+	CBS tbs_certificate;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!pkcs7_parse_tbs_certificate(&der_bytes, &tbs_certificate, cbs)) {
+		return ret;
+	}
+	out_tbs_certificate_size = CBS_len(&tbs_certificate);
+	uint8_t* tmp = (uint8_t*)CBS_data(&tbs_certificate);
+
+	out_tbs_certificate.resize(out_tbs_certificate_size);
+	out_tbs_certificate.assign(tmp, (tmp + out_tbs_certificate_size));
+	ret = 1;
+	return ret;
+}
+
+
 int PKCS7_get_raw_digests(vector<uint8_t>& out_digest, size_t &out_digest_size, CBS* cbs,
 	CRYPTO_BUFFER_POOL* pool) {
 
@@ -139,6 +189,16 @@ int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs
 
 }
 
+int PKCS7_get_tbs_certificate_value(CBS* cbs) {
+
+	int ret = 0;
+	size_t tbs_certificate_size = 0;
+	vector<uint8_t> tbs_certificate;
+	PKCS7_get_raw_tbs_certificate(tbs_certificate, tbs_certificate_size, cbs, NULL);
+	ret = 1;
+	return ret;
+}
+
 BIO* PKCS7_dataInit() {
 	return nullptr;
 }
@@ -151,43 +211,11 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	size_t len) {
 	CBS cbs;
 	CBS_init(&cbs, *inp, len);
-	CBS tbs_cert;
-	CBS toplevel;
-	CBS_get_asn1(&cbs, &toplevel, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE);
-	CBS_get_optional_asn1(
-		&tbs_cert, NULL, NULL,
-		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
-	CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE);
 
-	//PKCS7_get_
-	//if (!CBS_get_asn1(&cbs, &toplevel, CBS_ASN1_SEQUENCE) ||
-	//	CBS_len(&cbs) != 0 ||
-	//	!CBS_get_asn1(&toplevel, &tbs_cert, CBS_ASN1_SEQUENCE) ||
-	//	// version
-	//	!CBS_get_optional_asn1(
-	//		&tbs_cert, NULL, NULL,
-	//		CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
-	//	// serialNumber
-	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_INTEGER) ||
-	//	// signature algorithm
-	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-	//	// issuer
-	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-	//	// validity
-	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-	//	// subject
-	//	!CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE)) {
-	//	return nullptr;
-	//}
-	//ssl_cert_parse_pubkey(&cbs);
 	STACK_OF(X509*) out_digest;
 	out_digest = sk_X509_new_null();
-	PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
+	//PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
+	PKCS7_get_tbs_certificate_value(&cbs);
 	return nullptr;
 }
 
