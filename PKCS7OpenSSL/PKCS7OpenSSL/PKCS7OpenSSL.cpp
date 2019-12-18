@@ -2,6 +2,7 @@
 //
 
 #include "pch.h"
+#include "CertificateStoreOperation.h"
 
 using namespace std;
 using namespace ATL;

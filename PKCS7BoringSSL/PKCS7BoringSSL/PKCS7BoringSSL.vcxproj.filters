@@ -18,5 +18,16 @@
     <ClCompile Include="PKCS7BoringSSL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CertificateStoreOperation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CertificateStoreOperation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

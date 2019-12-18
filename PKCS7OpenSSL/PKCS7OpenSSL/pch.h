@@ -17,4 +17,3 @@
 #include <openssl/pkcs7.h>
 #include <openssl/pem.h>
 #include "atlbase.h"
-#include "CertificateStoreOperation.h"

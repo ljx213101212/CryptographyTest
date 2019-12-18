@@ -2,25 +2,12 @@
 //
 
 #include <iostream>
-#include <openssl/base.h>
-#include <openssl/nid.h>
-#include <openssl/obj.h>
-#include <openssl/asn1.h>
-#include <openssl/asn1t.h>
-#include <openssl/stack.h>
-#include <openssl/bio.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/pkcs7.h>
-#include <openssl/pem.h>
-#include <openssl/bytestring.h>
-#include <openssl/ssl.h>
-#include <openssl/bn.h>
-#include <fstream>
-#include <vector>
+
+#include "pch.h"
 #include "../includes/crypto/internal.h"
 #include "../includes/bytestring/internal.h"
 #include "../includes/pkcs7/pkcs7.c"
+
 
 using namespace std;
 
@@ -279,6 +266,9 @@ int PKCS7_get_public_key_info_value(CBS* cbs) {
 	size_t public_key_info_size = 0;
 	vector<uint8_t> public_key_info;
 	PKCS7_get_raw_public_key_info(public_key_info, public_key_info_size, cbs, NULL);
+	std::ofstream outfile("public_key_info.bin", std::ofstream::binary);
+	outfile.write((const char*)public_key_info.data(), public_key_info.size());
+	outfile.close();
 	ret = 1;
 	return ret;
 }
@@ -289,6 +279,9 @@ int PKCS7_get_tbs_certificate(CBS* cbs) {
 	size_t tbs_certificate_size = 0;
 	vector<uint8_t> tbs_certificate;
 	PKCS7_get_raw_tbs_certificate(tbs_certificate, tbs_certificate_size, cbs, NULL);
+	std::ofstream outfile("tbs_certificate.bin", std::ofstream::binary);
+	outfile.write((const char*)tbs_certificate.data(), tbs_certificate.size());
+	outfile.close();
 	ret = 1;
 	return ret;
 }
@@ -298,6 +291,11 @@ int PKCS7_get_signature(CBS* cbs) {
 	size_t signature_size = 0;
 	vector<uint8_t> signature;
 	PKCS7_get_raw_signature(signature, signature_size, cbs, NULL);
+
+	//output file
+	std::ofstream outfile("signature.bin", std::ofstream::binary);
+	outfile.write((const char*)signature.data(), signature.size());
+	outfile.close();
 	ret = 1;
 	return ret;
 
@@ -314,13 +312,16 @@ void getSpcIndirectDataContext(EVP_MD_CTX* ctx) {
 PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	size_t len) {
 	CBS cbs;
-	CBS_init(&cbs, *inp, len);
+
 
 	STACK_OF(X509*) out_digest;
 	out_digest = sk_X509_new_null();
 	//PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
-	//PKCS7_get_public_key_info_value(&cbs);
-	//PKCS7_get_tbs_certificate(&cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_public_key_info_value(&cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_tbs_certificate(&cbs);
+	CBS_init(&cbs, *inp, len);
 	PKCS7_get_signature(&cbs);
 	return nullptr;
 }
@@ -333,8 +334,16 @@ int main()
 	std::vector<char> buffer(std::istreambuf_iterator<char>(input), {});
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
 
-	//PKCS7* pcks7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
-	PKCS7* pcks7 = d2i_PKCS7_RAZ(NULL, &pCertificate, buffer.size());
+	PKCS7* pcks7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
+	X509_STORE* store = NULL;
+	store = X509_STORE_new();
+	STACK_OF(X509)* certs = pcks7->d.sign->cert;
+	for (int i = 0; certs && i < sk_X509_num(certs); i++) {
+		X509* x = sk_X509_value(certs, i);
+
+
+	}
+	//PKCS7* pcks7 = d2i_PKCS7_RAZ(NULL, &pCertificate, buffer.size());
     std::cout << "Hello World!\n";
 }
 
