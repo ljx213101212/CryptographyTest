@@ -1,5 +1,8 @@
 #pragma once
 #include "pch.h"
+#include <windows.h>
+#include <wincrypt.h>
+
 
 #define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 #define MY_STRING_TYPE (CERT_OID_NAME_STR)

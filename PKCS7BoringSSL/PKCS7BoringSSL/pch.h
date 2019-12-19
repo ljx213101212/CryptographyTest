@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <wincrypt.h>
+#undef X509_NAME
 #include <openssl/base.h>
 #include <openssl/nid.h>
 #include <openssl/obj.h>
