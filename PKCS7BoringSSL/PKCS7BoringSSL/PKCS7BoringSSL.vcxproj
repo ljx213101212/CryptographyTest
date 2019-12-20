@@ -97,7 +97,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;D:\Code\C++\CryptographyTest\PKCS7BoringSSL\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;libcrypto.lib;CRYPT32.LIB;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -115,7 +115,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\SourceCodeTest\Cryptography\PKCS7OpenSSL\PKCS7BoringSSL\lib;D:\Code\C++\CryptographyTest\PKCS7BoringSSL\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;libcrypto.lib;CRYPT32.LIB;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypto.lib;decrepit.lib;ssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -157,11 +157,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CertificateStoreOperation.cpp" />
     <ClCompile Include="PKCS7BoringSSL.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CertificateStoreOperation.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -25,6 +25,15 @@
 
 using namespace std;
 
+//ASN1_ITEM_TEMPLATE(PKCS7_ATTR_VERIFY) =
+//ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_SEQUENCE_OF | ASN1_TFLG_IMPTAG | ASN1_TFLG_UNIVERSAL,
+//	V_ASN1_SET, PKCS7_ATTRIBUTES, X509_ATTRIBUTE)
+//ASN1_ITEM_TEMPLATE_END(PKCS7_ATTR_VERIFY)
+
+//static ASN1_ITEM_EXP * item_type[] = {
+//		ASN1_ITEM_ref(PKCS7_ATTR_VERIFY)
+//};
+
 
 int pkcs7_parse_digests(uint8_t** der_bytes, CBS* out, CBS* cbs) {
 	CBS in, content_info, content_type, wrapped_signed_data, signed_data;
@@ -340,6 +349,27 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	return nullptr;
 }
 
+//static const ASN1_TEMPLATE PKCS7_seq_tt[] = {
+//	{  (0), (0), offsetof(PKCS7, type),
+//	   "type", NULL
+//	},
+//	 { ASN1_TFLG_ADB_OID, -1, 0, "PKCS7", 0 }
+//};
+//
+//const ASN1_ITEM* PKCS7_it(void) {
+//	static const ASN1_ITEM local_it = {
+//		ASN1_ITYPE_SEQUENCE,
+//		V_ASN1_SEQUENCE,
+//		PKCS7_seq_tt,
+//		sizeof(PKCS7_seq_tt) / sizeof(ASN1_TEMPLATE),
+//		NULL,
+//		sizeof(PKCS7),
+//		"PKCS7"
+//	};
+//	return &local_it;
+//};
+
+//IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
 int main()
 {
 	std::string filePath = "D:\\downloadTest\\certTest5\\keyboard_dark_sha1_signature";
@@ -349,15 +379,21 @@ int main()
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
 
 	PKCS7* pcks7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
-	X509_STORE* store = NULL;
-	store = X509_STORE_new();
-	STACK_OF(X509)* certs = pcks7->d.sign->cert;
-	for (int i = 0; certs && i < sk_X509_num(certs); i++) {
-		X509* x = sk_X509_value(certs, i);
 
+	unsigned char* abuf = NULL;
 
-	}
+	//ASN1_VALUE* myAns = ASN1_item_d2i(NULL, &pCertificate, buffer.size(), PKCS7_it());
+	//X509_STORE* store = NULL;
+	//store = X509_STORE_new();
+	//STACK_OF(X509)* certs = pcks7->d.sign->cert;
+	//for (int i = 0; certs && i < sk_X509_num(certs); i++) {
+	//	X509* x = sk_X509_value(certs, i);
+
+	//	int j = i + 1;
+	//}
 	//PKCS7* pcks7 = d2i_PKCS7_RAZ(NULL, &pCertificate, buffer.size());
+
+
     std::cout << "Hello World!\n";
 }
 

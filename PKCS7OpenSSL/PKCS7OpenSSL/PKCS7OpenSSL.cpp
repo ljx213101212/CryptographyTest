@@ -28,6 +28,14 @@ int main()
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
 	CertificateStoreOperation cso = CertificateStoreOperation();
 
+
+	unsigned char* abuf = NULL;
+
+
+
+	ASN1_VALUE* myAns = ASN1_item_d2i(NULL, &pCertificate, buffer.size(), ASN1_ITEM_rptr(PKCS7));
+
+	//return 1;
 	//Load crt file directly
 	//X509_LOOKUP* lookup = NULL;
 	//X509_STORE* store = NULL;

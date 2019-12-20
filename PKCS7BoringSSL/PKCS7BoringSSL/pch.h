@@ -1,21 +1,5 @@
 #pragma once
-#include <windows.h>
-#include <wincrypt.h>
-#undef X509_NAME
-#include <openssl/base.h>
-#include <openssl/nid.h>
-#include <openssl/obj.h>
-#include <openssl/asn1.h>
-#include <openssl/asn1t.h>
-#include <openssl/stack.h>
-#include <openssl/bio.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/pkcs7.h>
-#include <openssl/pem.h>
-#include <openssl/bytestring.h>
-#include <openssl/ssl.h>
-#include <openssl/bn.h>
+
 #include <fstream>
 #include <vector>
 #include <stdio.h>
