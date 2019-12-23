@@ -268,6 +268,56 @@ int PKCS7_get_raw_signature(vector<uint8_t>& out_signature, size_t& out_signatur
 	return ret;
 }
 
+int PKCS7_parse_signer_info(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+
+
+	int ret = 0;
+	CBS in, signed_data, certificates, signed_data_seq, signed_data_seq_inner, signer_info;
+	uint64_t version;
+	int has_certificates;
+	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
+		!CBS_get_optional_asn1(
+			&signed_data, &certificates, &has_certificates,
+			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+		goto err;
+	}
+	CBS_get_asn1(&signed_data, &signed_data_seq, CBS_ASN1_SET);
+	CBS_get_asn1(&signed_data_seq, &signed_data_seq_inner, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_INTEGER);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_optional_asn1(
+		&signed_data_seq_inner, &signer_info, &has_certificates,
+		CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0);
+	//CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_SEQUENCE);
+	//CBS_get_asn1(&signed_data_seq_inner, &octet_string, CBS_ASN1_OCTETSTRING);
+
+	CBS_init(out, CBS_data(&signer_info), CBS_len(&signer_info));
+	return 1;
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+}
+
+int PKCS7_get_raw_signer_info(vector<uint8_t>& out_signer_info, size_t& out_signer_info_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+
+	CBS signer_info;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!PKCS7_parse_signer_info(&der_bytes, &signer_info, cbs)) {
+		return ret;
+	}
+	out_signer_info_size = CBS_len(&signer_info);
+	uint8_t* tmp = (uint8_t*)CBS_data(&signer_info);
+	out_signer_info.resize(out_signer_info_size);
+	out_signer_info.assign(tmp, (tmp + out_signer_info_size));
+	ret = 1;
+	return ret;
+
+}
+
 
 int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs) {
 
@@ -321,7 +371,21 @@ int PKCS7_get_signature(CBS* cbs) {
 	outfile.close();
 	ret = 1;
 	return ret;
+}
 
+int PKCS7_get_signer_info(CBS* cbs) {
+	int ret = 0;
+	size_t signer_info_size = 0;
+	vector<uint8_t> signerInfo;
+	PKCS7_get_raw_signer_info(signerInfo, signer_info_size, cbs, NULL);
+	vector<uint8_t> prefix = { 0x31, (uint8_t)signer_info_size };
+	signerInfo.insert(signerInfo.begin(), prefix.begin(), prefix.end());
+	//
+	//output file
+	std::ofstream outfile("signer_info.bin", std::ofstream::binary);
+	outfile.write((const char*)signerInfo.data(), signerInfo.size());
+	ret = 1;
+	return ret;
 }
 
 BIO* PKCS7_dataInit() {
@@ -346,6 +410,8 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	PKCS7_get_tbs_certificate(&cbs);
 	CBS_init(&cbs, *inp, len);
 	PKCS7_get_signature(&cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_signer_info(&cbs);
 	return nullptr;
 }
 
@@ -378,7 +444,7 @@ int main()
 	std::vector<char> buffer(std::istreambuf_iterator<char>(input), {});
 	const unsigned char* pCertificate = reinterpret_cast<unsigned char*>(buffer.data());
 
-	PKCS7* pcks7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
+	//PKCS7* pcks7 = d2i_PKCS7(NULL, &pCertificate, buffer.size());
 
 	unsigned char* abuf = NULL;
 
@@ -391,7 +457,7 @@ int main()
 
 	//	int j = i + 1;
 	//}
-	//PKCS7* pcks7 = d2i_PKCS7_RAZ(NULL, &pCertificate, buffer.size());
+	PKCS7* pcks7 = d2i_PKCS7_RAZ(NULL, &pCertificate, buffer.size());
 
 
     std::cout << "Hello World!\n";
