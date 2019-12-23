@@ -392,6 +392,7 @@ err:
 }
 
 
+
 int PKCS7_get_raw_content_info(vector<uint8_t>& out_content_info, size_t& out_content_info_size, CBS* cbs,
 	CRYPTO_BUFFER_POOL* pool) {
 
@@ -411,6 +412,63 @@ int PKCS7_get_raw_content_info(vector<uint8_t>& out_content_info, size_t& out_co
 
 
 
+int PKCS7_parse_message_digest(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+
+	CBS in, signed_data, certificates, signed_data_seq, signed_data_seq_inner, signer_info, message_digest_wrapper, message_digest_set, ret;
+	uint64_t version;
+	int has_certificates;
+	if (!pkcs7_parse_header(der_bytes, &signed_data, cbs) ||
+		!CBS_get_optional_asn1(
+			&signed_data, &certificates, &has_certificates,
+			CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+		goto err;
+	}
+	CBS_get_asn1(&signed_data, &signed_data_seq, CBS_ASN1_SET);
+	CBS_get_asn1(&signed_data_seq, &signed_data_seq_inner, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_INTEGER);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signed_data_seq_inner, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_optional_asn1(
+		&signed_data_seq_inner, &signer_info, &has_certificates,
+		CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0);
+	CBS_get_asn1(&signer_info, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signer_info, NULL, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&signer_info, &message_digest_wrapper, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&message_digest_wrapper, NULL, CBS_ASN1_OBJECT);
+	CBS_get_asn1(&message_digest_wrapper, &message_digest_set, CBS_ASN1_SET);
+	CBS_get_asn1(&message_digest_set, &ret, CBS_ASN1_OCTETSTRING);
+
+
+	CBS_init(out, CBS_data(&ret), CBS_len(&ret));
+	return 1;
+
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+
+}
+
+
+//message_digest, message_digest_size, cbs, NULL
+int PKCS7_get_raw_message_digest(vector<uint8_t>& out_message_digest, size_t& out_message_digest_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+
+	CBS content_info;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!PKCS7_parse_message_digest(&der_bytes, &content_info, cbs)) {
+		return ret;
+	}
+	out_message_digest_size = CBS_len(&content_info);
+	uint8_t* tmp = (uint8_t*)CBS_data(&content_info);
+	out_message_digest.resize(out_message_digest_size);
+	out_message_digest.assign(tmp, (tmp + out_message_digest_size));
+	ret = 1;
+	return ret;
+}
+
+
 
 int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs) {
 
@@ -423,7 +481,20 @@ int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs
 	PKCS7_get_raw_digests(digest_data, digest_size, cbs, NULL);
 	ret = 1;
 	return ret;
+}
 
+int PKCS7_get_message_digest_value(CBS* cbs) {
+
+	int ret = 0;
+	size_t message_digest_size = 0;
+	vector<uint8_t> message_digest;
+	PKCS7_get_raw_message_digest(message_digest, message_digest_size, cbs, NULL);
+	//output file
+	std::ofstream outfile("message_digest.bin", std::ofstream::binary);
+	outfile.write((const char*)message_digest.data(), message_digest_size);
+	outfile.close();
+	ret = 1;
+	return ret;
 }
 
 int PKCS7_get_public_key_info_value(CBS* cbs) {
@@ -517,7 +588,8 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 
 	STACK_OF(X509*) out_digest;
 	out_digest = sk_X509_new_null();
-	//PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_spcIndirectDataContext_value(out_digest, &cbs);
 	CBS_init(&cbs, *inp, len);
 	PKCS7_get_public_key_info_value(&cbs);
 	CBS_init(&cbs, *inp, len);
@@ -528,6 +600,8 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	PKCS7_get_signer_info(&cbs);
 	CBS_init(&cbs, *inp, len);
 	PKCS7_get_content_info(&cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_message_digest_value(&cbs);
 	return nullptr;
 }
 
