@@ -34,6 +34,30 @@ using namespace std;
 //		ASN1_ITEM_ref(PKCS7_ATTR_VERIFY)
 //};
 
+//ref: https://wiki.openssl.org/index.php/EVP_Message_Digests
+void digest_message(const unsigned char* message, size_t message_len, unsigned char** digest, unsigned int* digest_len)
+{
+	EVP_MD_CTX* mdctx;
+
+	if ((mdctx = EVP_MD_CTX_create()) == NULL)
+		return;
+
+	if (1 != EVP_DigestInit_ex(mdctx, EVP_sha1(), NULL))
+		return;
+
+	if (1 != EVP_DigestUpdate(mdctx, message, message_len))
+		return;
+
+	if ((*digest = (unsigned char*)OPENSSL_malloc(EVP_MD_size(EVP_sha256()))) == NULL)
+		return;
+
+	if (1 != EVP_DigestFinal_ex(mdctx, *digest, digest_len))
+		return;
+
+	EVP_MD_CTX_destroy(mdctx);
+}
+
+
 
 int pkcs7_parse_digests(uint8_t** der_bytes, CBS* out, CBS* cbs) {
 	CBS in, content_info, content_type, wrapped_signed_data, signed_data;
@@ -270,7 +294,6 @@ int PKCS7_get_raw_signature(vector<uint8_t>& out_signature, size_t& out_signatur
 
 int PKCS7_parse_signer_info(uint8_t** der_bytes, CBS* out, CBS* cbs) {
 
-
 	int ret = 0;
 	CBS in, signed_data, certificates, signed_data_seq, signed_data_seq_inner, signer_info;
 	uint64_t version;
@@ -300,6 +323,8 @@ err:
 	return 0;
 }
 
+
+
 int PKCS7_get_raw_signer_info(vector<uint8_t>& out_signer_info, size_t& out_signer_info_size, CBS* cbs,
 	CRYPTO_BUFFER_POOL* pool) {
 
@@ -317,6 +342,74 @@ int PKCS7_get_raw_signer_info(vector<uint8_t>& out_signer_info, size_t& out_sign
 	return ret;
 
 }
+
+int PKCS7_parse_content_info(uint8_t** der_bytes, CBS* out, CBS* cbs) {
+
+	CBS in, content_info, content_type, wrapped_signed_data, signed_data;
+	CBS spcIndirectDataWrapper, spcIndirectDataContentType, wrappered_spc_indirect_data, ret;
+	uint64_t version;
+
+	// The input may be in BER format.
+	*der_bytes = NULL;
+	if (!CBS_asn1_ber_to_der(cbs, &in, der_bytes) ||
+		// See https://tools.ietf.org/html/rfc2315#section-7
+		!CBS_get_asn1(&in, &content_info, CBS_ASN1_SEQUENCE) ||
+		!CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT)) {
+		goto err;
+	}
+
+	if (!CBS_mem_equal(&content_type, kPKCS7SignedData,
+		sizeof(kPKCS7SignedData))) {
+		OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NOT_PKCS7_SIGNED_DATA);
+		goto err;
+	}
+
+	// See https://tools.ietf.org/html/rfc2315#section-9.1
+	CBS_get_asn1(&content_info, &wrapped_signed_data,
+		CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0);
+	CBS_get_asn1(&wrapped_signed_data, &signed_data, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1_uint64(&signed_data, &version);
+	CBS_get_asn1(&signed_data, NULL /* digests */, CBS_ASN1_SET);
+	CBS_get_asn1(&signed_data, &spcIndirectDataWrapper /* content */, CBS_ASN1_SEQUENCE);
+	CBS_get_asn1(&spcIndirectDataWrapper, &spcIndirectDataContentType /* content */, CBS_ASN1_OBJECT);
+	CBS_get_asn1(&spcIndirectDataWrapper, &wrappered_spc_indirect_data,
+		CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0);
+	CBS_get_asn1(&wrappered_spc_indirect_data, &ret /* content */, CBS_ASN1_SEQUENCE);
+
+	if (version < 1) {
+		OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_BAD_PKCS7_VERSION);
+		goto err;
+	}
+
+	CBS_init(out, CBS_data(&ret), CBS_len(&ret));
+	return 1;
+
+err:
+	OPENSSL_free(*der_bytes);
+	*der_bytes = NULL;
+	return 0;
+
+}
+
+
+int PKCS7_get_raw_content_info(vector<uint8_t>& out_content_info, size_t& out_content_info_size, CBS* cbs,
+	CRYPTO_BUFFER_POOL* pool) {
+
+	CBS content_info;
+	uint8_t* der_bytes = NULL;
+	int ret = 0;
+	if (!PKCS7_parse_content_info(&der_bytes, &content_info, cbs)) {
+		return ret;
+	}
+	out_content_info_size = CBS_len(&content_info);
+	uint8_t* tmp = (uint8_t*)CBS_data(&content_info);
+	out_content_info.resize(out_content_info_size);
+	out_content_info.assign(tmp, (tmp + out_content_info_size));
+	ret = 1;
+	return ret;
+}
+
+
 
 
 int PKCS7_get_spcIndirectDataContext_value(STACK_OF(X509)* out_digests, CBS* cbs) {
@@ -384,9 +477,30 @@ int PKCS7_get_signer_info(CBS* cbs) {
 	//output file
 	std::ofstream outfile("signer_info.bin", std::ofstream::binary);
 	outfile.write((const char*)signerInfo.data(), signerInfo.size());
+	outfile.close();
 	ret = 1;
 	return ret;
 }
+
+int PKCS7_get_content_info(CBS* cbs) {
+	int ret = 0;
+	size_t content_info_size = 0;
+	vector <uint8_t> content_info;
+	PKCS7_get_raw_content_info(content_info, content_info_size, cbs, NULL);
+
+	//get digest (message_digest)
+	std::unique_ptr<unsigned char*>digest = make_unique<unsigned char*>();
+	size_t digest_len;
+
+	digest_message(content_info.data(), content_info_size, digest.get(), &digest_len);
+	std::ofstream outfile("content_info.bin", std::ofstream::binary);
+	outfile.write((const char*)content_info.data(), content_info.size());
+	outfile.close();
+	ret = 1;
+	return ret;
+}
+
+
 
 BIO* PKCS7_dataInit() {
 	return nullptr;
@@ -412,6 +526,8 @@ PKCS7* d2i_PKCS7_RAZ(PKCS7** out, const uint8_t** inp,
 	PKCS7_get_signature(&cbs);
 	CBS_init(&cbs, *inp, len);
 	PKCS7_get_signer_info(&cbs);
+	CBS_init(&cbs, *inp, len);
+	PKCS7_get_content_info(&cbs);
 	return nullptr;
 }
 
